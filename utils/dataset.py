@@ -26,7 +26,8 @@ from utils.common import is_main_process, VIDEO_EXTENSIONS, round_to_nearest_mul
 
 DEBUG = False
 IMAGE_SIZE_ROUND_TO_MULTIPLE = 32
-NUM_PROC = min(8, os.cpu_count())
+# NUM_PROC = min(8, os.cpu_count())
+NUM_PROC = max(8, int(os.cpu_count() * 0.9))
 CAPTIONS_JSON_FILE = 'captions.json'
 ROUND_DECIMAL_DIGITS = 3
 
@@ -366,7 +367,8 @@ class DirectoryDataset:
         self.control_path = Path(self.directory_config['control_path']) if 'control_path' in self.directory_config else None
         # For testing. Default if a mask is missing.
         self.default_mask_file = Path(self.directory_config['default_mask_file']) if 'default_mask_file' in self.directory_config else None
-        self.cache_dir = self.path / 'cache' / self.model_name
+        # self.cache_dir = self.path / 'cache' / self.model_name
+        self.cache_dir = Path("/blob/lzy/AR/cache") / self.model_name
         self.grouping_keys_json_file = self.cache_dir / 'metadata/grouping_keys.json'
 
         if not self.path.exists() or not self.path.is_dir():
@@ -500,6 +502,9 @@ class DirectoryDataset:
         if regenerate_cache or not metadata_cache_file_1.exists() or not trust_cache:
             print('Intermediate metadata is not cached. Enumerating all files.')
             files = list(self.path.glob('*'))
+            # files = np.load("/blob/lzy/AR/Reconstruction/dataset/filenames_2.npy")
+            # str 转 Path
+            # files = [Path(f) for f in files]
             # deterministic order
             files.sort()
 
@@ -544,6 +549,10 @@ class DirectoryDataset:
                         if image_file.stem not in control_file_stems:
                             raise RuntimeError(f'No control file exists for image {image_file}')
                         control_files.append(str(control_file_stems[image_file.stem]))
+            image_specs = np.load("/blob/lzy/AR/Reconstruction/dataset/filenames_2.npy")
+            image_specs = [(None, f) for f in image_specs]
+            caption_files = [''] * len(image_specs)
+            mask_files = [None] * len(image_specs)
             assert len(image_specs) > 0, f'Directory {self.path} had no images/videos!'
 
             d = {'image_spec': image_specs, 'caption_file': caption_files, 'mask_file': mask_files}
@@ -621,7 +630,7 @@ class DirectoryDataset:
                     captions = [f.read().strip()]
             if captions is None:
                 captions = ['']
-                logger.warning(f'Cound not find caption for {image_file}. Using empty caption.')
+                # logger.warning(f'Cound not find caption for {image_file}. Using empty caption.')
             if self.directory_config['shuffle_tags'] and self.shuffle == 0: # backwards compatibility
                 self.shuffle = 1
             captions = shuffle_captions(captions, self.shuffle, self.shuffle_delimiter, self.directory_config['caption_prefix'])

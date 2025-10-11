@@ -72,13 +72,14 @@ class WanPipeline(BasePipeline):
 
     def __init__(self, config):
         self.config = config
+        print("Wan Config *************\n", self.config)
         self.model_config = self.config['model']
         self.offloader = ModelOffloader('dummy', [], 0, 0, True, torch.device('cuda'), False, debug=False)
         self.cache_text_embeddings = self.model_config.get('cache_text_embeddings', True)
         self.t_dist = get_t_distribution(self.model_config).to('cuda')
 
         # The official Wan top-level checkpoint folder. Must exist.
-        ckpt_dir = Path(self.model_config['ckpt_path'])
+        ckpt_dir = Path(os.path.expanduser(self.model_config['ckpt_path']))
         dtype = self.model_config['dtype']
 
         # transformer_path will either be a directory containing safetensors files, or directly point to a safetensors file

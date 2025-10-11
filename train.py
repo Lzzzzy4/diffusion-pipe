@@ -30,7 +30,7 @@ from utils.isolate_rng import isolate_rng
 from utils.patches import apply_patches
 from utils.unsloth_utils import unsloth_checkpoint
 from utils.pipeline import ManualPipelineModule
-# deepspeed --num_gpus=1 train.py --deepspeed --config examples/wan_5b.toml
+# true > nohup.out ; nohup deepspeed --num_gpus=4 train.py --deepspeed --config examples/wan_5b.toml --trust_cache &
 
 # needed for broadcasting Queue in dataset.py
 mp.current_process().authkey = b'afsaskgfdjh4'
