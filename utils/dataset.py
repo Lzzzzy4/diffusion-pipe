@@ -27,7 +27,7 @@ from utils.common import is_main_process, VIDEO_EXTENSIONS, round_to_nearest_mul
 DEBUG = False
 IMAGE_SIZE_ROUND_TO_MULTIPLE = 32
 # NUM_PROC = min(8, os.cpu_count())
-NUM_PROC = max(8, int(os.cpu_count() * 0.9))
+NUM_PROC = max(8, int(os.cpu_count() // 4))
 CAPTIONS_JSON_FILE = 'captions.json'
 ROUND_DECIMAL_DIGITS = 3
 
@@ -142,6 +142,7 @@ def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_ca
         return result
 
     flattened_captions = metadata_dataset.map(flatten_captions, batched=True, keep_in_memory=True, remove_columns=metadata_dataset.column_names)
+    print("map_and_cache 111")
     te_dataset = _map_and_cache(
         flattened_captions,
         map_fn,
@@ -179,6 +180,7 @@ class SizeBucketDataset:
             raise ValueError(f'num_repeats must be >0, was {self.num_repeats}')
 
     def cache_latents(self, map_fn, regenerate_cache=False, trust_cache=False, caching_batch_size=1):
+        print("SizeBucketDataset: cache_latents")
         print(f'caching latents: {self.size_bucket}')
         self.latent_dataset = _map_and_cache(
             self.metadata_dataset,
@@ -304,6 +306,7 @@ class ARBucketDataset:
         return self.size_buckets
 
     def cache_latents(self, map_fn, regenerate_cache=False, trust_cache=False, caching_batch_size=1):
+        print("ARBucketDataset: cache_latents")
         print(f'caching latents: {self.ar_frames}')
 
         for res in self.resolutions:
@@ -339,7 +342,9 @@ class DirectoryDataset:
     def __init__(self, directory_config, dataset_config, model_name, framerate=None, skip_dataset_validation=False):
         self._set_defaults(directory_config, dataset_config)
         self.directory_config = directory_config
+        print(f'Using directory config: {self.directory_config}')
         self.dataset_config = dataset_config
+        print(f'Using dataset config: {self.dataset_config}')
         if not skip_dataset_validation:
             self.validate()
         self.model_name = model_name
@@ -553,6 +558,7 @@ class DirectoryDataset:
             image_specs = [(None, f) for f in image_specs]
             caption_files = [''] * len(image_specs)
             mask_files = [None] * len(image_specs)
+            print(f"len(image_specs) {len(image_specs)}")
             assert len(image_specs) > 0, f'Directory {self.path} had no images/videos!'
 
             d = {'image_spec': image_specs, 'caption_file': caption_files, 'mask_file': mask_files}
@@ -769,10 +775,15 @@ class DirectoryDataset:
         return result
 
     def cache_latents(self, map_fn, regenerate_cache=False, trust_cache=False, caching_batch_size=1):
+        print("DirectoryDataset: cache_latents")
         print(f'caching latents: {self.path}')
         datasets = self.size_bucket_datasets if self.use_size_buckets else self.ar_bucket_datasets
+        print(f"len(datasets) {len(datasets)}")
+        for i,ds in enumerate(datasets):
+            print(f"ds {i} {type(ds)} {len(ds.metadata_dataset)}")
         for ds in datasets:
-            ds.cache_latents(map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=caching_batch_size)
+            print("ds.cache_latents")
+            ds.cache_latents(map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=16)
 
     def cache_text_embeddings(self, map_fn, i, regenerate_cache=False, caching_batch_size=1):
         print(f'caching text embeddings: {self.path}')
@@ -781,6 +792,7 @@ class DirectoryDataset:
             ds.cache_text_embeddings(map_fn, i, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
         # TODO: do this separately for is_video True and False for models that support it?
         empty_caption_ds = datasets.Dataset.from_dict({'caption': [''], 'is_video': [False], 'image_spec': [(None, None)]})
+        print("map_and_cache 333")
         uncond_text_embeddings_ds = _map_and_cache(
             empty_caption_ds,
             map_fn,
@@ -914,6 +926,7 @@ class Dataset:
             ds.cache_metadata(regenerate_cache=regenerate_cache, trust_cache=trust_cache)
 
     def cache_latents(self, map_fn, regenerate_cache=False, trust_cache=False, caching_batch_size=1):
+        print("Dataset:cache_latents")
         for ds in self.directory_datasets:
             ds.cache_latents(map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=caching_batch_size)
 
