@@ -295,6 +295,11 @@ class T5Encoder(nn.Module):
         self.apply(init_weights)
 
     def forward(self, ids, mask=None):
+        # ids to device
+        if ids.device != self.token_embedding.weight.device:
+            print(f"ids.device {ids.device}")
+            print(f"self.token_embedding.weight.device {self.token_embedding.weight.device}")
+            # ids = ids.to(self.token_embedding.weight.device)
         x = self.token_embedding(ids)
         x = self.dropout(x)
         e = self.pos_embedding(x.size(1),
@@ -548,42 +553,48 @@ class T5EncoderModel:
         checkpoint_path=None,
         tokenizer_path=None,
         shard_fn=None,
+        my=False,
     ):
-        self.text_len = text_len
-        self.dtype = dtype
-        self.device = device
-        self.checkpoint_path = checkpoint_path
-        self.tokenizer_path = tokenizer_path
+        self.my = my
+        if not my:
+            self.text_len = text_len
+            self.dtype = dtype
+            self.device = device
+            self.checkpoint_path = checkpoint_path
+            self.tokenizer_path = tokenizer_path
 
-        # init model
-        with init_empty_weights():
-            model = umt5_xxl(
-                encoder_only=True,
-                return_tokenizer=False,
-                dtype=dtype,
-                device=device).eval().requires_grad_(False)
+            print("T5EncoderModel init ********")
 
-        if checkpoint_path.endswith('.safetensors'):
-            state_dict = load_file(checkpoint_path, device='cpu')
-            state_dict = umt5_keys_mapping(state_dict)
-        else:
-            state_dict = torch.load(checkpoint_path, map_location='cpu')
+            # init model
+            with init_empty_weights():
+                model = umt5_xxl(
+                    encoder_only=True,
+                    return_tokenizer=False,
+                    dtype=dtype,
+                    device=device).eval().requires_grad_(False)
 
-        model.load_state_dict(state_dict, assign=True)
-        self.model = model
-        if shard_fn is not None:
-            self.model = shard_fn(self.model, sync_module_states=False)
-        else:
-            self.model.to(self.device)
-        # init tokenizer
-        self.tokenizer = HuggingfaceTokenizer(
-            name=tokenizer_path, seq_len=text_len, clean='whitespace')
+            if checkpoint_path.endswith('.safetensors'):
+                state_dict = load_file(checkpoint_path, device='cpu')
+                state_dict = umt5_keys_mapping(state_dict)
+            else:
+                state_dict = torch.load(checkpoint_path, map_location='cpu')
+
+            model.load_state_dict(state_dict, assign=True)
+            self.model = model
+            if shard_fn is not None:
+                self.model = shard_fn(self.model, sync_module_states=False)
+            else:
+                self.model.to(self.device)
+            # init tokenizer
+            self.tokenizer = HuggingfaceTokenizer(
+                name=tokenizer_path, seq_len=text_len, clean='whitespace')
 
     def __call__(self, texts, device):
-        ids, mask = self.tokenizer(
-            texts, return_mask=True, add_special_tokens=True)
-        ids = ids.to(device)
-        mask = mask.to(device)
-        seq_lens = mask.gt(0).sum(dim=1).long()
-        context = self.model(ids, mask)
-        return [u[:v] for u, v in zip(context, seq_lens)]
+        if not self.my:
+            ids, mask = self.tokenizer(
+                texts, return_mask=True, add_special_tokens=True)
+            ids = ids.to(device)
+            mask = mask.to(device)
+            seq_lens = mask.gt(0).sum(dim=1).long()
+            context = self.model(ids, mask)
+            return [u[:v] for u, v in zip(context, seq_lens)]

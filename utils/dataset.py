@@ -28,6 +28,7 @@ DEBUG = False
 IMAGE_SIZE_ROUND_TO_MULTIPLE = 32
 # NUM_PROC = min(8, os.cpu_count())
 NUM_PROC = max(8, int(os.cpu_count() // 4))
+# NUM_PROC = 1
 CAPTIONS_JSON_FILE = 'captions.json'
 ROUND_DECIMAL_DIGITS = 3
 
@@ -140,7 +141,7 @@ def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_ca
                         continue
                     result[key].append(value[i])
         return result
-
+    print("flatten_captions")
     flattened_captions = metadata_dataset.map(flatten_captions, batched=True, keep_in_memory=True, remove_columns=metadata_dataset.column_names)
     print("map_and_cache 111")
     te_dataset = _map_and_cache(
@@ -150,6 +151,7 @@ def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_ca
         cache_file_prefix=f'text_embeddings_{i}_',
         new_fingerprint_args=[i],
         regenerate_cache=regenerate_cache,
+        # regenerate_cache=True,
         caching_batch_size=caching_batch_size,
     )
     return TextEmbeddingDataset(te_dataset)
@@ -999,16 +1001,17 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
     for ds in datasets:
         ds.cache_latents(latents_map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=caching_batch_size)
 
-    for text_encoder_idx in range(num_text_encoders):
-        def text_embedding_map_fn(example, rank):
-            parent_conn, child_conn = pipes.setdefault(rank, mp.Pipe(duplex=False))
-            control_file = example['control_file'] if 'control_file' in example else None
-            queue.put((text_encoder_idx+1, example['caption'], example['is_video'], control_file, child_conn))
-            result = parent_conn.recv()  # dict
-            result['image_spec'] = example['image_spec']
-            return result
-        for ds in datasets:
-            ds.cache_text_embeddings(text_embedding_map_fn, text_encoder_idx+1, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
+    # **********
+    # for text_encoder_idx in range(num_text_encoders):
+    #     def text_embedding_map_fn(example, rank):
+    #         parent_conn, child_conn = pipes.setdefault(rank, mp.Pipe(duplex=False))
+    #         control_file = example['control_file'] if 'control_file' in example else None
+    #         queue.put((text_encoder_idx+1, example['caption'], example['is_video'], control_file, child_conn))
+    #         result = parent_conn.recv()  # dict
+    #         result['image_spec'] = example['image_spec']
+    #         return result
+    #     for ds in datasets:
+    #         ds.cache_text_embeddings(text_embedding_map_fn, text_encoder_idx+1, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
 
     # signal that we're done
     queue.put(None)
@@ -1093,8 +1096,9 @@ class DatasetManager:
         for ds in self.datasets:
             ds.cache_metadata(trust_cache=True)
             ds.cache_latents(None, trust_cache=True)
-            for i in range(1, len(self.text_encoders)+1):
-                ds.cache_text_embeddings(None, i)
+            # **********
+            # for i in range(1, len(self.text_encoders)+1):
+            #     ds.cache_text_embeddings(None, i)
 
     @torch.no_grad()
     def _handle_task(self, task):
@@ -1118,7 +1122,9 @@ class DatasetManager:
             idx = id - 1
             if self.te_fn_requires_control_file[idx]:
                 args.append(control_file)
+            # print("results = self.call_text_encoder_fns[idx](*args)")
             results = self.call_text_encoder_fns[idx](*args)
+            # print(f"results {type(results)} {results['text_embeddings'].shape} {results['seq_lens'].shape}")
         else:
             raise RuntimeError()
         # Need to move to CPU here. If we don't, we get this error:

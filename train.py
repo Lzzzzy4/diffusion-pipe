@@ -1,5 +1,6 @@
 import argparse
 import os
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import wandb
 from datetime import datetime, timezone
 import shutil
@@ -583,7 +584,7 @@ if __name__ == '__main__':
             import bitsandbytes
             klass = bitsandbytes.optim.AdamW8bit
         elif optim_type_lower == 'adamw_optimi':
-            import optimi
+            import optimi # pip install torch-optimi
             klass = optimi.AdamW
         elif optim_type_lower == 'stableadamw':
             import optimi

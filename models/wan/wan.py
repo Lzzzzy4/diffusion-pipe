@@ -316,6 +316,7 @@ class WanPipeline(BasePipeline):
         return fn
 
     def get_call_text_encoder_fn(self, text_encoder):
+        # #####
         def fn(caption, is_video):
             # Args are lists
             p = next(text_encoder.parameters())
@@ -324,8 +325,16 @@ class WanPipeline(BasePipeline):
             mask = mask.to(p.device)
             seq_lens = mask.gt(0).sum(dim=1).long()
             with torch.autocast(device_type=p.device.type, dtype=p.dtype):
-                text_embeddings = text_encoder(ids, mask)
+                text_embeddings = text_encoder(ids, mask) # [batch, 512, 4096] [batch]
                 return {'text_embeddings': text_embeddings, 'seq_lens': seq_lens}
+
+            # p = next(text_encoder.parameters())
+            # # 创建全0的text_embeddings
+            # batch_size = len(caption)
+            # text_embeddings = torch.zeros((batch_size, 512, 4096), device=p.device, dtype=p.dtype)
+            # seq_lens = torch.zeros((batch_size,), device=p.device, dtype=torch.long)
+            # return {'text_embeddings': text_embeddings, 'seq_lens': seq_lens}
+            # # return {"prompt": caption, "is_video": is_video}
         return fn
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
@@ -376,6 +385,9 @@ class WanPipeline(BasePipeline):
     def to_layers(self):
         transformer = self.transformer
         text_encoder = None if self.cache_text_embeddings else self.text_encoder.model
+        # move text encoder to GPU
+        if text_encoder is not None and next(text_encoder.parameters()).device != transformer.device:
+            text_encoder.to(transformer.device)
         layers = [InitialLayer(transformer, text_encoder)]
         for i, block in enumerate(transformer.blocks):
             layers.append(TransformerLayer(block, i, self.offloader))

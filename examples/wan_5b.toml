@@ -28,7 +28,8 @@ save_dtype = 'bfloat16'
 caching_batch_size = 1
 steps_per_print = 1
 video_clip_mode = 'single_beginning'
-blocks_to_swap = 32
+# blocks_to_swap = 32
+blocks_to_swap = 16
 
 [model]
 type = 'wan'
@@ -37,6 +38,7 @@ ckpt_path = '~/.cache/huggingface/hub/models--Wan-AI--Wan2.2-TI2V-5B/snapshots/9
 dtype = 'bfloat16'
 transformer_dtype = 'float8'
 timestep_sample_method = 'logit_normal'
+cache_text_embeddings = false
 
 [adapter]
 type = 'lora'
@@ -45,8 +47,8 @@ dtype = 'bfloat16'
 
 [optimizer]
 # type = 'AdamW8bitKahan'
-type = 'adamw_optimizer'
+type = 'adamw_optimi'
 lr = 2e-5
 betas = [0.9, 0.99]
 weight_decay = 0.01
-stabilize = false
+# stabilize = false
