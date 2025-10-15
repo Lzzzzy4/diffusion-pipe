@@ -553,7 +553,7 @@ class T5EncoderModel:
         checkpoint_path=None,
         tokenizer_path=None,
         shard_fn=None,
-        my=False,
+        my=True,
     ):
         self.my = my
         if not my:
@@ -588,6 +588,9 @@ class T5EncoderModel:
             # init tokenizer
             self.tokenizer = HuggingfaceTokenizer(
                 name=tokenizer_path, seq_len=text_len, clean='whitespace')
+        else:
+            from .videoencoder import VideoEncoderConditioner
+            self.model = VideoEncoderConditioner(output_dim=4096)
 
     def __call__(self, texts, device):
         if not self.my:
@@ -598,3 +601,6 @@ class T5EncoderModel:
             seq_lens = mask.gt(0).sum(dim=1).long()
             context = self.model(ids, mask)
             return [u[:v] for u, v in zip(context, seq_lens)]
+        else:
+            quant_code, valid_lengths = self.model(texts, deivce)
+            return [u[:v] for u, v in zip(quant_code, valid_lengths)]

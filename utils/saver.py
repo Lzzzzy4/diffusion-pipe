@@ -94,10 +94,14 @@ class Saver:
         dist.barrier()
         if dp_id == 0:
             # With BF16_Optimizer, we get pickle errors unless we do p.detach(). I have no idea why.
-            partial_state_dict = {p.original_name: p.detach() for p in self.pipeline_model.parameters() if hasattr(p, 'original_name')}
+            # partial_state_dict = {p.original_name: p.detach() for p in self.pipeline_model.parameters() if hasattr(p, 'original_name')}
+            # if 'save_dtype' in self.config:
+            #     convert_state_dict_dtype(partial_state_dict, self.config['save_dtype'])
+            # torch.save(partial_state_dict, tmp_dir / f'state_dict_{stage_id}.bin')
+            state_dict = self.pipeline_model.state_dict()  # buffer
             if 'save_dtype' in self.config:
-                convert_state_dict_dtype(partial_state_dict, self.config['save_dtype'])
-            torch.save(partial_state_dict, tmp_dir / f'state_dict_{stage_id}.bin')
+                convert_state_dict_dtype(state_dict, self.config['save_dtype'])
+            torch.save(state_dict, tmp_dir / f'state_dict_{stage_id}.bin')
         dist.barrier()
         if dp_id == 0 and stage_id == 0:
             state_dict = {}

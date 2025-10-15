@@ -8,7 +8,7 @@ from diffusers.models.modeling_utils import ModelMixin
 
 from .attention import flash_attention
 
-T5_CONTEXT_TOKEN_NUMBER = 512
+T5_CONTEXT_TOKEN_NUMBER = 30000
 FIRST_LAST_FRAME_CONTEXT_TOKEN_NUMBER = 257 * 2
 
 

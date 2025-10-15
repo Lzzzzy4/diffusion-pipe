@@ -538,7 +538,9 @@ if __name__ == '__main__':
         **additional_pipeline_module_kwargs
     )
     parameters_to_train = [p for p in pipeline_model.parameters() if p.requires_grad]
-
+    if is_main_process():
+        print_model_info(pipeline_model)
+        
     if config['compile']:
         pipeline_model.compile()
 

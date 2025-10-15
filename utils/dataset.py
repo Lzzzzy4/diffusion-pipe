@@ -777,12 +777,12 @@ class DirectoryDataset:
         return result
 
     def cache_latents(self, map_fn, regenerate_cache=False, trust_cache=False, caching_batch_size=1):
-        print("DirectoryDataset: cache_latents")
+        # print("DirectoryDataset: cache_latents")
         print(f'caching latents: {self.path}')
         datasets = self.size_bucket_datasets if self.use_size_buckets else self.ar_bucket_datasets
-        print(f"len(datasets) {len(datasets)}")
-        for i,ds in enumerate(datasets):
-            print(f"ds {i} {type(ds)} {len(ds.metadata_dataset)}")
+        # print(f"len(datasets) {len(datasets)}")
+        # for i,ds in enumerate(datasets):
+        #     print(f"ds {i} {type(ds)} {len(ds.metadata_dataset)}")
         for ds in datasets:
             print("ds.cache_latents")
             ds.cache_latents(map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=16)
@@ -794,7 +794,7 @@ class DirectoryDataset:
             ds.cache_text_embeddings(map_fn, i, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
         # TODO: do this separately for is_video True and False for models that support it?
         empty_caption_ds = datasets.Dataset.from_dict({'caption': [''], 'is_video': [False], 'image_spec': [(None, None)]})
-        print("map_and_cache 333")
+        # print("map_and_cache 333")
         uncond_text_embeddings_ds = _map_and_cache(
             empty_caption_ds,
             map_fn,

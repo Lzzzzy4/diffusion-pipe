@@ -1,5 +1,5 @@
 from transformers import Qwen2_5OmniProcessor
-# from qwen_omni_utils import process_mm_info
+import sys
 sys.path.append("/data/code/stable-audio-tools/stable_audio_tools/models")
 from process_mm_info import process_mm_info
 import math
@@ -20,16 +20,14 @@ class VideoEncoderConditioner(nn.Module):
     def __init__(
             self,
             output_dim: int,
-            enable_grad: bool = False,
             enable_connecter_gard: bool = True,
-            vq_quant: bool = False,
-            project_out: bool = False
+            vq_quant: bool = True,
+            return_sqlens: bool = True,
     ):
         super().__init__()
         self.input_dim = 128
-        self.enable_grad = enable_grad
+        self.return_sqlens = return_sqlens
         self.enable_connecter_gard = enable_connecter_gard
-        # super().__init__(input_dim, output_dim, project_out=project_out)
         # random sleep for 0～5s
         time.sleep(random.randint(0,5))
         self.processor = Qwen2_5OmniProcessor.from_pretrained("Qwen/Qwen2.5-Omni-3B")
@@ -62,7 +60,10 @@ class VideoEncoderConditioner(nn.Module):
         self.connector.to(device)
         conversation = []
         for temp in prompts:
-            video_path, video_start, video_end = temp
+            if type(temp) == str or len(temp) == 1:
+                video_path, video_start, video_end = temp[0], 0, None
+            else:
+                video_path, video_start, video_end = temp
             if video_start != 0: print("*******************video_start != 0")
             conversation.append(
                 {
@@ -107,6 +108,8 @@ class VideoEncoderConditioner(nn.Module):
             # quant code back to [batch, 30000, hidden_dim]
             quant_code = quant_code.reshape(embeddings.shape[0], embeddings.shape[1], -1)
             # return quant_code, attention_mask, vq_loss
+            if self.return_sqlens:
+                return quant_code, valid_lengths
             return quant_code, attention_mask
 
         return embeddings, attention_mask

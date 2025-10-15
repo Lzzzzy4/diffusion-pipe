@@ -24,7 +24,7 @@ from . import configs as wan_configs
 
 KEEP_IN_HIGH_PRECISION = ['norm', 'bias', 'patch_embedding', 'text_embedding', 'time_embedding', 'time_projection', 'head', 'modulation']
 
-
+VideoEncoder=True
 class WanModelFromSafetensors(WanModel):
     @classmethod
     def from_pretrained(
@@ -185,11 +185,12 @@ class WanPipeline(BasePipeline):
             tokenizer_path=ckpt_dir / wan_config.t5_tokenizer,
             shard_fn=None,
         )
-        if self.model_config.get('text_encoder_fp8', False):
-            for name, p in self.text_encoder.model.named_parameters():
-                if p.ndim == 2 and not ('token_embedding' in name or 'pos_embedding' in name):
-                    p.data = p.data.to(torch.float8_e4m3fn)
-        self.text_encoder.model.requires_grad_(False)
+        if not VideoEncoder:
+            if self.model_config.get('text_encoder_fp8', False):
+                for name, p in self.text_encoder.model.named_parameters():
+                    if p.ndim == 2 and not ('token_embedding' in name or 'pos_embedding' in name):
+                        p.data = p.data.to(torch.float8_e4m3fn)
+            self.text_encoder.model.requires_grad_(False)
 
         vae_class = Wan2_2_VAE if model_type == 'ti2v' else Wan2_1_VAE
         # Same here, this isn't a nn.Module.
@@ -338,6 +339,8 @@ class WanPipeline(BasePipeline):
         return fn
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
+        for k,v in inputs.items():
+            print(f"input {k}: {type(v)} {v.shape if torch.is_tensor(v) else v}")
         latents = inputs['latents'].float()
         mask = inputs['mask']
         y = inputs['y'] if self.model_type in ('i2v', 'flf2v', 'i2v_v2') else None
@@ -347,8 +350,12 @@ class WanPipeline(BasePipeline):
         if self.cache_text_embeddings:
             text_embeddings_or_ids = inputs['text_embeddings']
             seq_lens_or_text_mask = inputs['seq_lens']
-        else:
-            text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
+        else: # text encoder will
+            if hasattr(self.text_encoder, 'tokenizer') and self.text_encoder.tokenizer is not None:
+                text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
+            else:
+                text_embeddings_or_ids = [f[1] for f in inputs['image_spec']] # paths
+                seq_lens_or_text_mask = None
 
         bs, channels, num_frames, h, w = latents.shape
 
@@ -452,11 +459,15 @@ class InitialLayer(nn.Module):
             clip_fea = None
 
         if self.text_encoder is not None:
-            assert not torch.is_floating_point(text_embeddings_or_ids)
-            with torch.no_grad():
-                context = self.text_encoder(text_embeddings_or_ids, seq_lens_or_text_mask)
-            context.requires_grad_(True)
-            text_seq_lens = seq_lens_or_text_mask.gt(0).sum(dim=1).long()
+            if self.text_encoder.my is not None and self.text_encoder.my == True:
+                context, text_seq_lens = self.text_encoder(text_embeddings_or_ids, self.patch_embedding.weight.device)
+                context.requires_grad_(True)
+            else:
+                assert not torch.is_floating_point(text_embeddings_or_ids)
+                with torch.no_grad():
+                    context = self.text_encoder(text_embeddings_or_ids, seq_lens_or_text_mask)
+                context.requires_grad_(True)
+                text_seq_lens = seq_lens_or_text_mask.gt(0).sum(dim=1).long()
         else:
             context = text_embeddings_or_ids
             text_seq_lens = seq_lens_or_text_mask
