@@ -1001,7 +1001,6 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
     for ds in datasets:
         ds.cache_latents(latents_map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=caching_batch_size)
 
-    # **********
     # for text_encoder_idx in range(num_text_encoders):
     #     def text_embedding_map_fn(example, rank):
     #         parent_conn, child_conn = pipes.setdefault(rank, mp.Pipe(duplex=False))
@@ -1096,7 +1095,6 @@ class DatasetManager:
         for ds in self.datasets:
             ds.cache_metadata(trust_cache=True)
             ds.cache_latents(None, trust_cache=True)
-            # **********
             # for i in range(1, len(self.text_encoders)+1):
             #     ds.cache_text_embeddings(None, i)
 

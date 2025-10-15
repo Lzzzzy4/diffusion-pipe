@@ -58,9 +58,12 @@ class VideoEncoderConditioner(nn.Module):
 
     def forward(self, prompts: tp.List[str], device: tp.Union[torch.device, str]) -> tp.Tuple[torch.Tensor, torch.Tensor]:
         self.connector.to(device)
+        print("VideoEncoderConditioner prompts:", prompts)
         conversation = []
         for temp in prompts:
-            if type(temp) == str or len(temp) == 1:
+            if type(temp) == str:
+                video_path, video_start, video_end = temp, 0, None
+            elif len(temp) == 1:
                 video_path, video_start, video_end = temp[0], 0, None
             else:
                 video_path, video_start, video_end = temp
@@ -76,7 +79,7 @@ class VideoEncoderConditioner(nn.Module):
         audios, images, videos = process_mm_info(conversation, use_audio_in_video=False)
         # /home/yifanyang/miniconda3/envs/sao/lib/python3.10/site-packages/qwen_omni_utils/v2_5/audio_process.py
         inputs = self.processor(text="Hello", audio=None, images=None, videos=videos, return_tensors="pt", padding=True, use_audio_in_video=False)
-
+        print("VideoEncoderConditioner inputs:", {k: v.shape if isinstance(v, torch.Tensor) else v for k, v in inputs.items()})
         attention_mask = inputs["feature_attention_mask"].to(device)
         embeddings = inputs["input_features"].to(device)
 

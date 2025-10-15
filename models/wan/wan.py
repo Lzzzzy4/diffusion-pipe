@@ -72,7 +72,7 @@ class WanPipeline(BasePipeline):
 
     def __init__(self, config):
         self.config = config
-        print("Wan Config *************\n", self.config)
+        print("Wan Config\n", self.config)
         self.model_config = self.config['model']
         self.offloader = ModelOffloader('dummy', [], 0, 0, True, torch.device('cuda'), False, debug=False)
         self.cache_text_embeddings = self.model_config.get('cache_text_embeddings', True)
@@ -339,8 +339,6 @@ class WanPipeline(BasePipeline):
         return fn
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
-        for k,v in inputs.items():
-            print(f"input {k}: {type(v)} {v.shape if torch.is_tensor(v) else v}")
         latents = inputs['latents'].float()
         mask = inputs['mask']
         y = inputs['y'] if self.model_type in ('i2v', 'flf2v', 'i2v_v2') else None
@@ -350,12 +348,13 @@ class WanPipeline(BasePipeline):
         if self.cache_text_embeddings:
             text_embeddings_or_ids = inputs['text_embeddings']
             seq_lens_or_text_mask = inputs['seq_lens']
-        else: # text encoder will
+        else: # *****************
             if hasattr(self.text_encoder, 'tokenizer') and self.text_encoder.tokenizer is not None:
                 text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
             else:
-                text_embeddings_or_ids = [f[1] for f in inputs['image_spec']] # paths
-                seq_lens_or_text_mask = None
+                paths = [f[1] for f in inputs['image_spec']]
+                text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder(paths, device=self.transformer.device)
+            # text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
 
         bs, channels, num_frames, h, w = latents.shape
 
@@ -458,9 +457,11 @@ class InitialLayer(nn.Module):
         if clip_fea.numel() == 0:
             clip_fea = None
 
-        if self.text_encoder is not None:
-            if self.text_encoder.my is not None and self.text_encoder.my == True:
-                context, text_seq_lens = self.text_encoder(text_embeddings_or_ids, self.patch_embedding.weight.device)
+        if self.text_encoder is not None: # ***************
+            if hasattr(self.text_encoder, 'my') and self.text_encoder.my == True:
+                # context, text_seq_lens = self.text_encoder(text_embeddings_or_ids, self.patch_embedding.weight.device)
+                context = text_embeddings_or_ids
+                text_seq_lens = seq_lens_or_text_mask
                 context.requires_grad_(True)
             else:
                 assert not torch.is_floating_point(text_embeddings_or_ids)

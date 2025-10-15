@@ -602,5 +602,5 @@ class T5EncoderModel:
             context = self.model(ids, mask)
             return [u[:v] for u, v in zip(context, seq_lens)]
         else:
-            quant_code, valid_lengths = self.model(texts, deivce)
+            quant_code, valid_lengths = self.model(texts, device)
             return [u[:v] for u, v in zip(quant_code, valid_lengths)]
