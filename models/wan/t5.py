@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from accelerate import init_empty_weights
 from safetensors.torch import load_file
 
-from .tokenizers import HuggingfaceTokenizer
+from .tokenizers_my import HuggingfaceTokenizer
 
 
 def fp16_clamp(x):
