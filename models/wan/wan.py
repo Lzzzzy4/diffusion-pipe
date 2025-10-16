@@ -353,7 +353,7 @@ class WanPipeline(BasePipeline):
                 text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
             else:
                 paths = [f[1] for f in inputs['image_spec']]
-                text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder(paths, device=self.transformer.device)
+                text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.model(paths, device=self.transformer.device)
             # text_embeddings_or_ids, seq_lens_or_text_mask = self.text_encoder.tokenizer(inputs['caption'], return_mask=True, add_special_tokens=True)
 
         bs, channels, num_frames, h, w = latents.shape
@@ -427,7 +427,7 @@ class WanPipeline(BasePipeline):
         self.offloader.set_forward_only(True)
         self.offloader.prepare_block_devices_before_forward()
 
-
+from .videoconditioner import VideoEncoderConditioner
 class InitialLayer(nn.Module):
     def __init__(self, model, text_encoder):
         super().__init__()
@@ -444,7 +444,8 @@ class InitialLayer(nn.Module):
         self.freqs = model.freqs
         self.freq_dim = model.freq_dim
         self.dim = model.dim
-        self.text_len = model.text_len
+        # self.text_len = model.text_len
+        self.text_len = 1800
 
     @torch.autocast('cuda', dtype=AUTOCAST_DTYPE)
     def forward(self, inputs):
@@ -458,8 +459,8 @@ class InitialLayer(nn.Module):
             clip_fea = None
 
         if self.text_encoder is not None: # ***************
-            if hasattr(self.text_encoder, 'my') and self.text_encoder.my == True:
-                # context, text_seq_lens = self.text_encoder(text_embeddings_or_ids, self.patch_embedding.weight.device)
+            # if hasattr(self.text_encoder, 'my') and self.text_encoder.my == True:
+            if type(self.text_encoder) == VideoEncoderConditioner:
                 context = text_embeddings_or_ids
                 text_seq_lens = seq_lens_or_text_mask
                 context.requires_grad_(True)
@@ -472,7 +473,6 @@ class InitialLayer(nn.Module):
         else:
             context = text_embeddings_or_ids
             text_seq_lens = seq_lens_or_text_mask
-
         context = [emb[:length] for emb, length in zip(context, text_seq_lens)]
 
         device = self.patch_embedding.weight.device
@@ -512,6 +512,7 @@ class InitialLayer(nn.Module):
         e0 = self.time_projection(e).unflatten(2, (6, self.dim))
 
         # context
+        # print(f"self.text_len {self.text_len}")
         context = self.text_embedding(
             torch.stack([
                 torch.cat(

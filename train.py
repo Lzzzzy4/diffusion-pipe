@@ -361,6 +361,26 @@ if __name__ == '__main__':
         # Can't do gradient clipping with gradient release, since there are no grads at the end of the step anymore.
         'gradient_clipping': 0. if gradient_release else config.get('gradient_clipping', 1.0),
         'steps_per_print': config.get('steps_per_print', 1),
+        # "zero_optimization": {
+        #     "stage": 2,
+        #     "offload_optimizer": {
+        #       "device": "cpu",
+        #       "pin_memory": True
+        #     },
+        #     "contiguous_gradients": True,
+        #     "overlap_comm": True
+        #   },
+        # "bf16": {
+        #   "enabled": True
+        # },
+        # "optimizer": {
+        #   "type": "AdamW",
+        #   "params": {
+        #     "lr": 2e-5,
+        #     "betas": [0.9, 0.99],
+        #     "weight_decay": 0.01
+        #   }
+        # },
     }
     caching_batch_size = config.get('caching_batch_size', 1)
     dataset_manager = dataset_util.DatasetManager(model, regenerate_cache=regenerate_cache, trust_cache=args.trust_cache, caching_batch_size=caching_batch_size)

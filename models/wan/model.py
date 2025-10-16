@@ -8,7 +8,7 @@ from diffusers.models.modeling_utils import ModelMixin
 
 from .attention import flash_attention
 
-T5_CONTEXT_TOKEN_NUMBER = 30000
+T5_CONTEXT_TOKEN_NUMBER = 1800
 FIRST_LAST_FRAME_CONTEXT_TOKEN_NUMBER = 257 * 2
 
 
@@ -378,7 +378,7 @@ class WanModel(ModelMixin, ConfigMixin):
     def __init__(self,
                  model_type='t2v',
                  patch_size=(1, 2, 2),
-                 text_len=512,
+                 text_len=1800,
                  in_dim=16,
                  dim=2048,
                  ffn_dim=8192,
