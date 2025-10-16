@@ -589,7 +589,7 @@ class T5EncoderModel:
             self.tokenizer = HuggingfaceTokenizer(
                 name=tokenizer_path, seq_len=text_len, clean='whitespace')
         else:
-            from .videoencoder import VideoEncoderConditioner
+            from .videoconditioner import VideoEncoderConditioner
             self.model = VideoEncoderConditioner(output_dim=4096)
 
     def __call__(self, texts, device):
