@@ -1,6 +1,5 @@
 import argparse
 import os
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import wandb
 from datetime import datetime, timezone
 import shutil
