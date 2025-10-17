@@ -581,8 +581,8 @@ if __name__ == '__main__':
     # )
     parameters_to_train = [p for p in pipeline_model.parameters() if p.requires_grad]
     if is_main_process():
-        print_model_info(pipeline_model)
-        for name, p in self.pipeline_model.named_parameters():
+        # print_model_info(pipeline_model)
+        for name, p in pipeline_model.named_parameters():
             if p.requires_grad:
                 if not hasattr(p, 'original_name'):
                     print(f'Parameter {name} is trainable but has no original_name attribute')
