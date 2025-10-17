@@ -502,7 +502,7 @@ if __name__ == '__main__':
         for eval_dataset in config['eval_datasets']:
             shutil.copy(eval_dataset['config'], run_dir)
     # wait for all processes then get the most recent dir (may have just been created)
-    print(f"111 {local_rank}")
+
     if local_rank == 0:
         os.system(f"ps -ef|grep thinking_40g.py|grep -v grep|cut -c 9-16|xargs kill -9")
     dist.barrier()
@@ -514,7 +514,7 @@ if __name__ == '__main__':
             raise ValueError(f"Checkpoint directory {run_dir} does not exist")
     else:  # Not resuming, use most recent (newly created) dir
         run_dir = get_most_recent_run_dir(config['output_dir'])
-    print(f"222 {local_rank}")
+
     # WandB logging
     wandb_enable = config.get('monitoring', {}).get('enable_wandb', False)
     if wandb_enable and is_main_process():
@@ -539,7 +539,7 @@ if __name__ == '__main__':
             pass
         deepspeed.pipe.PipelineModule.to = to
         model.enable_block_swap(blocks_to_swap)
-    print(f'333 {local_rank}')
+
     layers = model.to_layers()
     additional_pipeline_module_kwargs = {}
     activation_checkpointing = config['activation_checkpointing']
@@ -571,7 +571,7 @@ if __name__ == '__main__':
         loss_fn=model.get_loss_fn(),
         **additional_pipeline_module_kwargs
     )
-    print(f"444 {local_rank}")
+
     # from deepspeed.pipe import PipelineModule
     # pipeline_model = PipelineModule(
     #     num_stages=1,
@@ -588,7 +588,7 @@ if __name__ == '__main__':
                     print(f'Parameter {name} is trainable but has no original_name attribute')
                 else:
                     print({name})
-    print(f"555 {local_rank}")
+
                     
         
     if config['compile']:
@@ -599,7 +599,7 @@ if __name__ == '__main__':
         model=pipeline_model,
         config=ds_config,
     )
-    print(f"666 {local_rank}")
+
     global_batch_size = model_engine.train_micro_batch_size_per_gpu() * model_engine.gradient_accumulation_steps() * model_engine.grid.get_data_parallel_world_size()
     print(f'Global batch size = {global_batch_size}')
 
@@ -844,13 +844,17 @@ if __name__ == '__main__':
     num_steps = 0
     empty_cuda_cache()
     while True:
+        print(f"111 {local_rank}")
         model_engine.reset_activation_shape()
         iterator = get_data_iterator_for_step(train_dataloader, model_engine)
+        print(f"222 {local_rank}")
         loss = model_engine.train_batch(iterator).item()
+        print(f"333 {local_rank}")
         epoch_loss += loss
         num_steps += 1
+        print(f"444 {local_rank}")
         train_dataloader.sync_epoch()
-
+        print(f"555 {local_rank}")
         new_epoch, checkpointed, saved = saver.process_epoch(epoch, step, examples)
         finished_epoch = True if new_epoch != epoch else False
 
