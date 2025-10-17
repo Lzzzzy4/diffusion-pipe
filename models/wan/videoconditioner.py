@@ -144,7 +144,7 @@ class VideoEncoderConditioner(nn.Module):
             start += grid_mul[i]//4
         for i in range(len(grid_mul)):
             if grid_mul[i]%16 != 0:
-                print(f"**********Warning: grid_mul {grid_mul[i]} not divisible by 16, truncate to {grid_mul[i]-grid_mul[i]%16}")
+                # print(f"**********Warning: grid_mul {grid_mul[i]} not divisible by 16, truncate to {grid_mul[i]-grid_mul[i]%16}")
                 remainder = grid_mul[i]%16
                 grid_mul[i] = grid_mul[i] - remainder
                 feature_list[i] = feature_list[i][:-remainder//4, :]
@@ -158,13 +158,13 @@ class VideoEncoderConditioner(nn.Module):
         attention_mask = torch.zeros((N, MAX_LEN), dtype=torch.long, device=device)
         for i in range(N):
             if video_features_list[i].shape[0] > MAX_LEN:
-                print(f"**********Warning: video_features_list[{i}] length {video_features_list[i].shape[0]} > {MAX_LEN}, truncate to {MAX_LEN}")
+                # print(f"**********Warning: video_features_list[{i}] length {video_features_list[i].shape[0]} > {MAX_LEN}, truncate to {MAX_LEN}")
                 embeddings[i, :, :] = video_features_list[i][:MAX_LEN, :]
                 attention_mask[i, :] = 1
             else:
                 embeddings[i, :video_features_list[i].shape[0], :] = video_features_list[i]
                 attention_mask[i, :video_features_list[i].shape[0]] = 1
-        
+
         # embeddings = video_features.view(N, -1, self.output_dim)  # [batch, seqlen, dim]
         # attention_mask = torch.ones((N, embeddings.shape[1]), dtype=torch.long, device=device)  # [batch, seqlen=1800]
 

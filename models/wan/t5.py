@@ -554,6 +554,7 @@ class T5EncoderModel:
         tokenizer_path=None,
         shard_fn=None,
         my=True,
+        # my=False,
     ):
         self.my = my
         if not my:

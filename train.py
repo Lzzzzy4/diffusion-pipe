@@ -32,6 +32,9 @@ from utils.patches import apply_patches
 from utils.unsloth_utils import unsloth_checkpoint
 from utils.pipeline import ManualPipelineModule
 # ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=1 --num_gpus=8 train.py --deepspeed --config examples/wan_5b.toml --trust_cache &
+# ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=1 --num_gpus=8 train.py --deepspeed --config examples/wan_5b_lora.toml --trust_cache &
+
+# ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=2 --num_gpus=8 train.py --deepspeed --config examples/wan_5b_lora.toml --trust_cache &
 
 # needed for broadcasting Queue in dataset.py
 mp.current_process().authkey = b'afsaskgfdjh4'
@@ -471,8 +474,10 @@ if __name__ == '__main__':
     dataset_manager.cache()
     if args.cache_only:
         quit()
+    print('Dataset caching complete')
 
     model.load_diffusion_model()
+    print('Diffusion model loaded')
 
     if adapter_config := config.get('adapter', None):
         model.configure_adapter(adapter_config)
@@ -481,6 +486,7 @@ if __name__ == '__main__':
             model.load_adapter_weights(init_from_existing)
     else:
         is_adapter = False
+    print('Model adapter configured')
 
     # if this is a new run, create a new dir for it
     if not resume_from_checkpoint and is_main_process():
@@ -557,9 +563,23 @@ if __name__ == '__main__':
         loss_fn=model.get_loss_fn(),
         **additional_pipeline_module_kwargs
     )
+    # from deepspeed.pipe import PipelineModule
+    # pipeline_model = PipelineModule(
+    #     num_stages=1,
+    #     layers=layers,
+    #     loss_fn=model.get_loss_fn(),
+    #     **additional_pipeline_module_kwargs
+    # )
     parameters_to_train = [p for p in pipeline_model.parameters() if p.requires_grad]
     if is_main_process():
         print_model_info(pipeline_model)
+        for name, p in self.pipeline_model.named_parameters():
+            if p.requires_grad:
+                if not hasattr(p, 'original_name'):
+                    print(f'Parameter {name} is trainable but has no original_name attribute')
+                else:
+                    print({name})
+                    
         
     if config['compile']:
         pipeline_model.compile()

@@ -116,6 +116,7 @@ class Saver:
             print(f'Saving model to directory {name}')
         if self.is_adapter:
             self.save_adapter(name)
+            self.save_full_model(name)
         else:
             self.save_full_model(name)
 

@@ -8,8 +8,8 @@ dataset = '/data/code/diffusion-pipe/examples/dataset.toml'
 # resume_from_checkpoint = '/blob/lzy/AR/Video/ckpt/20251014_15-43-11/global_step3129'
 # training settings
 epochs = 20
-micro_batch_size_per_gpu = 1
-pipeline_stages = 2
+micro_batch_size_per_gpu = 8
+pipeline_stages = 1
 gradient_accumulation_steps = 1
 gradient_clipping = 1
 warmup_steps = 10
@@ -43,14 +43,14 @@ transformer_dtype = 'bfloat16'
 timestep_sample_method = 'logit_normal'
 cache_text_embeddings = false
 
-# [adapter]
-# type = 'lora'
-# rank = 32
-# dtype = 'bfloat16'
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
 
 [optimizer]
-# type = 'AdamW8bitKahan'
-type = 'adamw_optimi'
+type = 'AdamW8bitKahan'
+# type = 'adamw_optimi'
 lr = 2e-5
 betas = [0.9, 0.99]
 weight_decay = 0.01
