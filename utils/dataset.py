@@ -1042,16 +1042,72 @@ class DatasetManager:
     # Use the third-party multiprocess library because HF Datasets uses it for the map() calls.
     # Mix and match native multiprocessing / torch.multiprocessing and multiprocess at your peril! Things can break.
     # In patches.py we register reductions so Tensors sent over Queues and Pipes are efficient just like in torch.multiprocessing.
+    # def cache(self, unload_models=True):
+    #     if is_main_process():
+    #         manager = mp.Manager()
+    #         queue = [manager.Queue()]
+    #     else:
+    #         queue = [None]
+    #     torch.distributed.broadcast_object_list(queue, src=0, group=dist.get_world_group())
+    #     queue = queue[0]
+
+    #     # start up a process to run through the dataset caching flow
+    #     if is_main_process():
+    #         process = mp.Process(
+    #             target=_cache_fn,
+    #             args=(
+    #                 self.datasets,
+    #                 queue,
+    #                 self.model.get_preprocess_media_file_fn(),
+    #                 len(self.text_encoders),
+    #                 self.regenerate_cache,
+    #                 self.trust_cache,
+    #                 self.caching_batch_size,
+    #             )
+    #         )
+    #         process.start()
+
+    #     # loop on the original processes (one per GPU) to handle tasks requiring GPU models (VAE, text encoders)
+    #     while True:
+    #         task = queue.get()
+    #         if task is None:
+    #             # Propagate None so all worker processes break out of this loop.
+    #             # This is safe because it's a FIFO queue. The first None always comes after all work items.
+    #             queue.put(None)
+    #             break
+    #         self._handle_task(task)
+
+    #     if unload_models:
+    #         # Free memory in all unneeded submodels. This is easier than trying to delete every reference.
+    #         # TODO: check if this is actually freeing memory.
+    #         for model in self.submodels:
+    #             if self.model.name == 'sdxl' and model is self.vae:
+    #                 # If full fine tuning SDXL, we need to keep the VAE weights around for saving the model.
+    #                 model.to('cpu')
+    #             else:
+    #                 model.to('meta')
+
+    #     dist.barrier()
+    #     if is_main_process():
+    #         process.join()
+
+    #     # Now load all datasets from cache.
+    #     for ds in self.datasets:
+    #         ds.cache_metadata(trust_cache=True)
+    #         ds.cache_latents(None, trust_cache=True)
+    #         # for i in range(1, len(self.text_encoders)+1):
+    #         #     ds.cache_text_embeddings(None, i)
     def cache(self, unload_models=True):
         if is_main_process():
             manager = mp.Manager()
-            queue = [manager.Queue()]
+            queue = manager.Queue()
         else:
-            queue = [None]
-        torch.distributed.broadcast_object_list(queue, src=0, group=dist.get_world_group())
-        queue = queue[0]
-
-        # start up a process to run through the dataset caching flow
+            queue = None
+    
+        # 不要 broadcast Manager.Queue() 对象！
+        # 而是简单同步 barrier
+        torch.distributed.barrier()
+    
         if is_main_process():
             process = mp.Process(
                 target=_cache_fn,
@@ -1066,37 +1122,36 @@ class DatasetManager:
                 )
             )
             process.start()
-
-        # loop on the original processes (one per GPU) to handle tasks requiring GPU models (VAE, text encoders)
-        while True:
-            task = queue.get()
-            if task is None:
-                # Propagate None so all worker processes break out of this loop.
-                # This is safe because it's a FIFO queue. The first None always comes after all work items.
-                queue.put(None)
-                break
-            self._handle_task(task)
-
+    
+        # 每个 rank 根据自己的职责执行
+        if is_main_process():
+            while True:
+                task = queue.get()
+                if task is None:
+                    queue.put(None)
+                    break
+                self._handle_task(task)
+        else:
+            # 其他 rank 直接 barrier 等待 rank0 完成缓存
+            torch.distributed.barrier()
+    
         if unload_models:
-            # Free memory in all unneeded submodels. This is easier than trying to delete every reference.
-            # TODO: check if this is actually freeing memory.
             for model in self.submodels:
                 if self.model.name == 'sdxl' and model is self.vae:
-                    # If full fine tuning SDXL, we need to keep the VAE weights around for saving the model.
                     model.to('cpu')
                 else:
                     model.to('meta')
-
-        dist.barrier()
+    
+        # 确保 rank0 完成
+        torch.distributed.barrier()
+    
         if is_main_process():
             process.join()
-
-        # Now load all datasets from cache.
+    
+        # 加载缓存
         for ds in self.datasets:
             ds.cache_metadata(trust_cache=True)
             ds.cache_latents(None, trust_cache=True)
-            # for i in range(1, len(self.text_encoders)+1):
-            #     ds.cache_text_embeddings(None, i)
 
     @torch.no_grad()
     def _handle_task(self, task):

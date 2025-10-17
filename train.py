@@ -244,8 +244,8 @@ def distributed_init(args):
     local_rank = args.local_rank
 
     # Set environment variables for distributed training
-    os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
-    os.environ['MASTER_PORT'] = str(args.master_port)
+    # os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
+    # os.environ['MASTER_PORT'] = str(args.master_port)
 
     return world_size, rank, local_rank
 
