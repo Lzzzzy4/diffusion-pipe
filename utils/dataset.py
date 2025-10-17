@@ -1099,38 +1099,38 @@ class DatasetManager:
     #         #     ds.cache_text_embeddings(None, i)
 
     def cache(self, unload_models=True):
-        if is_main_process():
-            manager = mp.Manager()
-            queue = manager.Queue()
-        else:
-            queue = None
+        # if is_main_process():
+        #     manager = mp.Manager()
+        #     queue = manager.Queue()
+        # else:
+        #     queue = None
 
-        # 不要 broadcast Manager.Queue() 对象！
-        # 而是简单同步 barrier
-        torch.distributed.barrier()
+        # # 不要 broadcast Manager.Queue() 对象！
+        # # 而是简单同步 barrier
+        # torch.distributed.barrier()
 
-        if is_main_process():
-            process = mp.Process(
-                target=_cache_fn,
-                args=(
-                    self.datasets,
-                    queue,
-                    self.model.get_preprocess_media_file_fn(),
-                    len(self.text_encoders),
-                    self.regenerate_cache,
-                    self.trust_cache,
-                    self.caching_batch_size,
-                )
-            )
-            process.start()
+        # if is_main_process():
+        #     process = mp.Process(
+        #         target=_cache_fn,
+        #         args=(
+        #             self.datasets,
+        #             queue,
+        #             self.model.get_preprocess_media_file_fn(),
+        #             len(self.text_encoders),
+        #             self.regenerate_cache,
+        #             self.trust_cache,
+        #             self.caching_batch_size,
+        #         )
+        #     )
+        #     process.start()
 
-        # 每个 rank 根据自己的职责执行
-        while True:
-            task = queue.get()
-            if task is None:
-                queue.put(None)
-                break
-            self._handle_task(task)
+        # # 每个 rank 根据自己的职责执行
+        # while True:
+        #     task = queue.get()
+        #     if task is None:
+        #         queue.put(None)
+        #         break
+        #     self._handle_task(task)
 
         if unload_models:
             for model in self.submodels:
