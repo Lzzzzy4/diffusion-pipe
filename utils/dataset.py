@@ -1097,17 +1097,18 @@ class DatasetManager:
     #         ds.cache_latents(None, trust_cache=True)
     #         # for i in range(1, len(self.text_encoders)+1):
     #         #     ds.cache_text_embeddings(None, i)
+
     def cache(self, unload_models=True):
         if is_main_process():
             manager = mp.Manager()
             queue = manager.Queue()
         else:
             queue = None
-    
+
         # 不要 broadcast Manager.Queue() 对象！
         # 而是简单同步 barrier
         torch.distributed.barrier()
-    
+
         if is_main_process():
             process = mp.Process(
                 target=_cache_fn,
@@ -1122,32 +1123,27 @@ class DatasetManager:
                 )
             )
             process.start()
-    
+
         # 每个 rank 根据自己的职责执行
-        if is_main_process():
-            while True:
-                task = queue.get()
-                if task is None:
-                    queue.put(None)
-                    break
-                self._handle_task(task)
-        else:
-            # 其他 rank 直接 barrier 等待 rank0 完成缓存
-            torch.distributed.barrier()
-    
+        while True:
+            task = queue.get()
+            if task is None:
+                queue.put(None)
+                break
+            self._handle_task(task)
+
         if unload_models:
             for model in self.submodels:
                 if self.model.name == 'sdxl' and model is self.vae:
                     model.to('cpu')
                 else:
                     model.to('meta')
-    
-        # 确保 rank0 完成
+
         torch.distributed.barrier()
-    
+
         if is_main_process():
             process.join()
-    
+
         # 加载缓存
         for ds in self.datasets:
             ds.cache_metadata(trust_cache=True)
