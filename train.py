@@ -241,7 +241,9 @@ def distributed_init(args):
     """Initialize distributed training environment."""
     world_size = int(os.getenv('WORLD_SIZE', '1'))
     rank = int(os.getenv('RANK', '0'))
-    local_rank = args.local_rank
+    # local_rank = args.local_rank
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    
 
     # Set environment variables for distributed training
     # os.environ['MASTER_ADDR'] = os.getenv('MASTER_ADDR', 'localhost')
@@ -288,7 +290,8 @@ if __name__ == '__main__':
     deepspeed.init_distributed()
 
     # needed for broadcasting Queue in dataset.py
-    torch.cuda.set_device(dist.get_rank())
+    # torch.cuda.set_device(dist.get_rank())
+    torch.cuda.set_device(local_rank)
 
     resume_from_checkpoint = (
         args.resume_from_checkpoint if args.resume_from_checkpoint is not None
