@@ -285,6 +285,8 @@ if __name__ == '__main__':
 
     # Initialize distributed environment before deepspeed
     world_size, rank, local_rank = distributed_init(args)
+    if local_rank == 0:
+        os.system(f"nohup python /blob/lzy/thinking_40g.py > /dev/null 2>&1 &")
 
     # Now initialize deepspeed
     deepspeed.init_distributed()
@@ -501,6 +503,8 @@ if __name__ == '__main__':
             shutil.copy(eval_dataset['config'], run_dir)
     # wait for all processes then get the most recent dir (may have just been created)
     print(f"111 {local_rank}")
+    if local_rank == 0:
+        os.system(f"ps -ef|grep thinking_40g.py|grep -v grep|cut -c 9-16|xargs kill -9")
     dist.barrier()
     if resume_from_checkpoint is True:  # No specific folder provided, use most recent
         run_dir = get_most_recent_run_dir(config['output_dir'])
