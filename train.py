@@ -34,7 +34,7 @@ from utils.pipeline import ManualPipelineModule
 # ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=1 --num_gpus=8 train.py --deepspeed --config examples/wan_5b.toml --trust_cache &
 # ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=1 --num_gpus=8 train.py --deepspeed --config examples/wan_5b_lora.toml --trust_cache &
 
-# ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out ; nohup deepspeed --num_nodes=2 --num_gpus=8 train.py --deepspeed --config examples/wan_5b_lora.toml --trust_cache &
+# ps -ef|grep train|grep -v grep|cut -c 9-16|xargs kill -9; ps -ef|grep thinking_40g|grep -v grep|cut -c 9-16|xargs kill -9;conda activate wan; cd /data/code/diffusion-pipe; true > nohup.out; nohup deepspeed --num_nodes=2 --num_gpus=8 --master_port 12346 --master_addr 100.65.209.35 train.py --deepspeed --config examples/wan_5b_lora.toml --trust_cache --master_port 12346&
 
 # needed for broadcasting Queue in dataset.py
 mp.current_process().authkey = b'afsaskgfdjh4'
