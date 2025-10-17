@@ -1141,8 +1141,8 @@ class DatasetManager:
 
         torch.distributed.barrier()
 
-        if is_main_process():
-            process.join()
+        # if is_main_process():
+        #     process.join()
 
         # 加载缓存
         for ds in self.datasets:
