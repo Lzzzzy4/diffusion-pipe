@@ -844,17 +844,17 @@ if __name__ == '__main__':
     num_steps = 0
     empty_cuda_cache()
     while True:
-        print(f"111 {local_rank}")
+        print(f"111 step:{num_steps} {local_rank}")
         model_engine.reset_activation_shape()
         iterator = get_data_iterator_for_step(train_dataloader, model_engine)
-        print(f"222 {local_rank}")
+        print(f"222 step:{num_steps} {local_rank}")
         loss = model_engine.train_batch(iterator).item()
-        print(f"333 {local_rank}")
+        print(f"333 step:{num_steps} {local_rank}")
         epoch_loss += loss
         num_steps += 1
-        print(f"444 {local_rank}")
+        print(f"444 step:{num_steps} {local_rank}")
         train_dataloader.sync_epoch()
-        print(f"555 {local_rank}")
+        print(f"555 step:{num_steps} {local_rank}")
         new_epoch, checkpointed, saved = saver.process_epoch(epoch, step, examples)
         finished_epoch = True if new_epoch != epoch else False
 

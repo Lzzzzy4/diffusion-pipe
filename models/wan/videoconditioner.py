@@ -95,6 +95,7 @@ class VideoEncoderConditioner(nn.Module):
             )
 
     def forward(self, prompts: tp.List[str], device: tp.Union[torch.device, str], demo: bool=False) -> tp.Tuple[torch.Tensor, torch.Tensor]:
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self.visual.to(device)
         self.merger.to(device)
         self.ibq_projection.to(device)
@@ -167,7 +168,7 @@ class VideoEncoderConditioner(nn.Module):
 
         # embeddings = video_features.view(N, -1, self.output_dim)  # [batch, seqlen, dim]
         # attention_mask = torch.ones((N, embeddings.shape[1]), dtype=torch.long, device=device)  # [batch, seqlen=1800]
-
+        print(f"VideoEncoder 111 {local_rank}")
         if self.vq_quant:
             valid_lengths = attention_mask.sum(dim=1).long()  # [batch]
             cu_seqlens = torch.cat([
@@ -184,6 +185,7 @@ class VideoEncoderConditioner(nn.Module):
                 position_embeddings=None,
                 demo=demo,
             )
+            print(f"VideoEncoder 222 {local_rank}")
             # back to [batch, seqlen, dim]
             # print(f"quant_code before reshape {quant_code.shape, quant_code[0][:10]}")
             quant_code_batch = torch.zeros_like(embeddings)
@@ -193,6 +195,7 @@ class VideoEncoderConditioner(nn.Module):
             # print(f"quant_code {quant_code.shape, quant_code[0][0][:10]}, code_idx {code_idx.shape}, vq_loss {vq_loss}")
             out_dtype = next(self.merger.parameters()).dtype
             quant_code = quant_code.to(out_dtype)
+            print(f"VideoEncoder 333 {local_rank}")
             return quant_code, valid_lengths
 
         out_dtype = next(self.merger.parameters()).dtype
